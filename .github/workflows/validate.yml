@@ -1,1 +1,137 @@
+name: Repository Validation
 
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate portfolio files
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install validation dependencies
+        run: python -m pip install --upgrade pip PyYAML
+
+      - name: Confirm required repository files
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            "README.md"
+            "index.html"
+            "shared/remediation_agent.py"
+            "scenarios/velocloud-sdwan/README.md"
+            "scenarios/multicloud-vpc/README.md"
+            "scenarios/openstack-vm-service/README.md"
+            "scenarios/vcf-self-service-catalog/README.md"
+            "scenarios/dns-ipam-automation/README.md"
+            "scenarios/network-config-compliance/README.md"
+          )
+
+          for path in "${required[@]}"; do
+            test -f "$path" || { echo "Missing required file: $path"; exit 1; }
+          done
+
+      - name: Validate Python syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -d '' files < <(find . -type f -name '*.py' -not -path './.git/*' -print0)
+          if ((${#files[@]})); then
+            python -m py_compile "${files[@]}"
+          fi
+
+      - name: Validate JSON files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          files = sorted(p for p in Path('.').rglob('*.json') if '.git' not in p.parts)
+          for path in files:
+              with path.open(encoding='utf-8') as handle:
+                  json.load(handle)
+              print(f'valid JSON: {path}')
+          PY
+
+      - name: Validate YAML files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import yaml
+
+          files = sorted(
+              p for pattern in ('*.yml', '*.yaml')
+              for p in Path('.').rglob(pattern)
+              if '.git' not in p.parts
+          )
+          for path in files:
+              with path.open(encoding='utf-8') as handle:
+                  list(yaml.safe_load_all(handle))
+              print(f'valid YAML: {path}')
+          PY
+
+      - name: Validate shell-script syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' script; do
+            bash -n "$script"
+            echo "valid shell: $script"
+          done < <(find . -type f -name '*.sh' -not -path './.git/*' -print0)
+
+      - name: Validate HTML structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class StrictEnoughHTMLParser(HTMLParser):
+              def error(self, message):
+                  raise ValueError(message)
+
+          files = sorted(p for p in Path('.').rglob('*.html') if '.git' not in p.parts)
+          for path in files:
+              parser = StrictEnoughHTMLParser(convert_charrefs=True)
+              parser.feed(path.read_text(encoding='utf-8'))
+              parser.close()
+              print(f'parsed HTML: {path}')
+          PY
+
+      - name: Check for unresolved merge markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -RInE '^(<<<<<<<|=======|>>>>>>>)' \
+            --exclude-dir=.git \
+            --exclude='validate.yml' \
+            .; then
+            echo "Unresolved merge markers found."
+            exit 1
+          fi
