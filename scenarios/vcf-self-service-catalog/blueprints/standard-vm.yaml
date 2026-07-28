@@ -1,0 +1,6 @@
+# blueprints/standard-vm.yaml
+# Supporting file referenced by this automation pipeline.
+# Abbreviated placeholder for demo purposes, not full production content.
+
+name: example
+# Illustrative structure, see the scenario README for how this file is used.

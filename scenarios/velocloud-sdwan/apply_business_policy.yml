@@ -1,0 +1,44 @@
+---
+- name: Apply standardized Business Policy baseline to new site profile
+  hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Apply Business Policy rule set to profile
+      uri:
+        url: "https://vco.internal.example.com/portal/rest/configuration/updateConfigurationModule"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vco_api_token }}"
+        body_format: json
+        body:
+          profileId: "{{ profile_id }}"
+          module: "businessPolicy"
+          data: "{{ lookup('file', 'baseline_business_policy.json') }}"
+        status_code: 200
+
+    - name: Configure segments (Business / Guest / IoT)
+      uri:
+        url: "https://vco.internal.example.com/portal/rest/configuration/updateConfigurationModule"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vco_api_token }}"
+        body_format: json
+        body:
+          profileId: "{{ profile_id }}"
+          module: "segments"
+          data: "{{ lookup('file', 'baseline_segments.json') }}"
+
+    - name: Verify DMPO enabled on WAN links
+      uri:
+        url: "https://vco.internal.example.com/portal/rest/edge/getEdgeLinks"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ vco_api_token }}"
+      register: edge_links
+
+    - name: Fail if DMPO not enabled on any link
+      assert:
+        that: "item.dmpoEnabled == true"
+        fail_msg: "DMPO not enabled on link {{ item.name }}"
+      loop: "{{ edge_links.json.links }}"

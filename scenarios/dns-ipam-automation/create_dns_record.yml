@@ -1,0 +1,31 @@
+---
+- name: Create DNS record for newly allocated IP
+  hosts: dns_server
+  gather_facts: false
+
+  tasks:
+    - name: Look up allocated IP from NetBox
+      uri:
+        url: "https://netbox.internal.example.com/api/ipam/ip-addresses/?dns_name={{ hostname }}.internal.example.com"
+        headers:
+          Authorization: "Token {{ netbox_api_token }}"
+        return_content: true
+      register: netbox_lookup
+
+    - name: Create forward (A) DNS record
+      community.general.nsupdate:
+        server: "{{ dns_server_ip }}"
+        zone: internal.example.com
+        record: "{{ hostname }}"
+        type: A
+        value: "{{ netbox_lookup.json.results[0].address.split('/')[0] }}"
+        state: present
+
+    - name: Create reverse (PTR) DNS record
+      community.general.nsupdate:
+        server: "{{ dns_server_ip }}"
+        zone: "4.20.10.in-addr.arpa"
+        record: "{{ netbox_lookup.json.results[0].address.split('/')[0] }}"
+        type: PTR
+        value: "{{ hostname }}.internal.example.com"
+        state: present

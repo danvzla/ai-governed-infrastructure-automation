@@ -1,0 +1,62 @@
+---
+- name: Provision AWS VPC
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Create VPC
+      amazon.aws.ec2_vpc_net:
+        name: "{{ vpc_name }}"
+        cidr_block: "{{ allocated_cidr }}"
+        tags:
+          owner: "{{ owner_team }}"
+          cost-center: "{{ cost_center }}"
+      when: target_cloud == "aws"
+      register: aws_vpc
+
+    - name: Create AWS subnet
+      amazon.aws.ec2_vpc_subnet:
+        vpc_id: "{{ aws_vpc.vpc.id }}"
+        cidr: "{{ allocated_cidr }}"
+      when: target_cloud == "aws"
+
+- name: Provision GCP VPC
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Create VPC network
+      google.cloud.gcp_compute_network:
+        name: "{{ vpc_name }}"
+        auto_create_subnetworks: false
+        project: "{{ gcp_project }}"
+      when: target_cloud == "gcp"
+      register: gcp_vpc
+
+    - name: Create subnetwork
+      google.cloud.gcp_compute_subnetwork:
+        name: "{{ vpc_name }}-subnet"
+        network: "{{ gcp_vpc }}"
+        ip_cidr_range: "{{ allocated_cidr }}"
+        region: "{{ gcp_region }}"
+        project: "{{ gcp_project }}"
+      when: target_cloud == "gcp"
+
+- name: Provision Azure VNet
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: Create virtual network
+      azure.azcollection.azure_rm_virtualnetwork:
+        name: "{{ vpc_name }}"
+        resource_group: "{{ azure_resource_group }}"
+        address_prefixes: "{{ allocated_cidr }}"
+        tags:
+          cost-center: "{{ cost_center }}"
+      when: target_cloud == "azure"
+
+    - name: Create subnet
+      azure.azcollection.azure_rm_subnet:
+        name: "{{ vpc_name }}-subnet"
+        virtual_network_name: "{{ vpc_name }}"
+        resource_group: "{{ azure_resource_group }}"
+        address_prefix: "{{ allocated_cidr }}"
+      when: target_cloud == "azure"

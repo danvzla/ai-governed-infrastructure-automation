@@ -1,0 +1,28 @@
+---
+- name: Configure team access and quota for self-service catalog
+  hosts: localhost
+  connection: local
+
+  tasks:
+    - name: Grant catalog access to team project
+      uri:
+        url: "https://vcf-automation.internal.example.com/automation/api/catalog/access"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vcf_automation_token }}"
+        body_format: json
+        body:
+          project: "{{ team_project }}"
+          catalogItems: "{{ approved_blueprints }}"
+        status_code: 200
+
+    - name: Set team quota
+      uri:
+        url: "https://vcf-automation.internal.example.com/automation/api/quota"
+        method: POST
+        headers:
+          Authorization: "Bearer {{ vcf_automation_token }}"
+        body_format: json
+        body:
+          project: "{{ team_project }}"
+          quotaClass: "{{ quota_class }}"

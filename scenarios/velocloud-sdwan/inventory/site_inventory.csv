@@ -1,0 +1,3 @@
+site_id,region,qos_profile,segments
+branch-042,us-east,gold,Business|Guest
+branch-043,us-west,silver,Business

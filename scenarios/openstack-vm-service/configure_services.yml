@@ -1,0 +1,24 @@
+---
+- name: Configure services on newly provisioned VM
+  hosts: "{{ stack_output_hosts }}"
+  become: true
+
+  tasks:
+    - name: Install required packages
+      package:
+        name: "{{ workload_packages }}"
+        state: present
+
+    - name: Register instance with service discovery
+      uri:
+        url: "https://consul.internal.example.com/v1/agent/service/register"
+        method: PUT
+        body_format: json
+        body:
+          Name: "{{ workload_name }}"
+          Address: "{{ ansible_default_ipv4.address }}"
+
+    - name: Confirm service is listening
+      wait_for:
+        port: "{{ service_port }}"
+        timeout: 30

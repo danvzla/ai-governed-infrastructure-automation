@@ -1,0 +1,20 @@
+---
+- name: Orchestrate nightly config backup and compliance check
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Run backup and compliance script across inventory
+      command: python backup_and_check.py
+      register: backup_result
+
+    - name: Commit backups to version control
+      command: git commit -am "Nightly config backup, {{ ansible_date_time.date }}"
+      args:
+        chdir: backups/
+
+    - name: Fail the job if any device shows drift
+      fail:
+        msg: "Compliance drift detected, see backup_and_check.py output"
+      when: "'DRIFT DETECTED' in backup_result.stdout"
