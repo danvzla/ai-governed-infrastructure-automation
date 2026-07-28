@@ -104,3 +104,38 @@ The repository-level validation workflow performs safe static checks only. It do
 ## Honesty note
 
 Tool references such as NAPALM, NetBox, VeloCloud, OpenStack, VCF Automation, Ansible, NETCONF, and gNMI are based on real public technologies. The specific problems, workflows, code excerpts, figures, and outputs are illustrative examples created to demonstrate architecture methodology and design thinking, not reproductions of client engagements or production deployments.
+
+## Architecture and Governance
+
+The portfolio separates AI-assisted recommendations from deterministic authorization and execution controls. Inputs are validated, the AI proposes a structured action, and policy outside the model evaluates risk, allowlists, maintenance windows, rollback availability, repeated failures, and required approvals. Unknown, high-risk, malformed, or denied actions default to human escalation.
+
+The model does **not** independently authorize or execute production changes.
+
+## Deterministic vs. AI-Generated Outputs
+
+**Deterministic controls:** policy thresholds, action allowlists, risk tiers, approval requirements, CI/CD gates, retry and escalation rules, and rollback requirements.
+
+**AI-assisted outputs:** remediation recommendations, risk explanations, change summaries, architecture guidance, and operational next steps.
+
+## Validation and Quality Controls
+
+Current controls include Python compilation, JSON/YAML parsing, Ansible syntax validation where available, basic HTML verification, structured recommendation values, and escalation by default for unknown or malformed decisions.
+
+## Security and Data Handling
+
+- The public portfolio does not connect to production infrastructure or execute live changes.
+- Do not submit credentials, production configurations, customer data, private IP plans, or sensitive telemetry.
+- Production deployments require managed secrets, workload identity, least privilege, RBAC, encryption, audit logging, input sanitization, and prompt-injection defenses.
+
+## Testing
+
+Current testing validates static structure and representative workflow behavior. Production use would require unit, policy, API-contract, idempotency, concurrency, dry-run, rollback, failure-injection, dependency-scanning, and approval-path tests.
+
+## Limitations
+
+This is an architecture showcase, not a deployed automation platform. Integrations, data, figures, and outcomes are illustrative. Production identity, observability, transactional state, and change execution are not implemented.
+
+## Disclaimer
+
+This project is provided for demonstration and educational purposes. Human review and environment-specific validation are required before operational use.
+
